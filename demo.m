@@ -9,4 +9,5 @@ video_path = 'sequences/Crossing';
 [seq, ground_truth] = load_video_info(video_path);
 
 % Run C-COT
-results = testing(seq);
+% results = testing(seq);
+results = HOG_settings(seq);

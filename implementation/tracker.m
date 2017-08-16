@@ -290,11 +290,14 @@ for frame = 1:num_frames,
     % Insert the new training sample
     for k = 1:num_feature_blocks
         samplesf{k}(replace_ind,:,:,:) = permute(xlf{k}, [4 3 1 2]);
-    end
+	end
     
+	hann_window_function = @(sz) hann(sz(1))*hann(sz(2))';
+	spatial_weights = cellfun(@(sz) ones(sz), feature_sz_cell, 'uniformoutput', false);
     % Construct the right hand side vector
     rhs_samplef = cellfun(@(xf) permute(mtimesx(sample_weights, 'T', xf, 'speed'), [3 4 2 1]), samplesf, 'uniformoutput', false);
-    rhs_samplef = cellfun(@(xf, yf) bsxfun(@times, conj(xf), yf), rhs_samplef, yf, 'uniformoutput', false);
+    yf = cellfun(@(yf, sw) compact_fourier_coeff(cfft2(cifft2(full_fourier_coeff(yf)) .* sw)), yf, spatial_weights, 'uniformoutput', false);
+	rhs_samplef = cellfun(@(xf, yf) bsxfun(@times, conj(xf), yf), rhs_samplef, yf, 'uniformoutput', false);
     
     new_sample_energy = cellfun(@(xlf) abs(xlf .* conj(xlf)), xlf, 'uniformoutput', false);
     
@@ -331,7 +334,7 @@ for frame = 1:num_frames,
     
     % do conjugate gradient
     [hf, flag, relres, iter, res_norms, p, rho] = pcg_ccot(...
-        @(x) lhs_operation(x, samplesf, reg_filter, sample_weights, feature_reg),...
+        @(x) lhs_operation(x, samplesf, reg_filter, sample_weights, feature_reg, spatial_weights),...
         rhs_samplef, CG_tol, max_CG_iter, ...
         @(x) diag_precond(x, diag_M), ...
         [], hf, p, rho);

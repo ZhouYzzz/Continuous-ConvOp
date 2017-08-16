@@ -151,6 +151,12 @@ if ((nargin >= 7) && ~isempty(x0))
 %     x = zeros(n,1);
 end
 
+if isempty(varargin)
+	spatial_weights = 0;
+else
+	spatial_weights = varargin{1};
+end
+
 % if ((nargin > 7) && strcmp(atype,'matrix') && ...
 %         strcmp(m1type,'matrix') && strcmp(m2type,'matrix'))
 %     error(message('MATLAB:pcg:TooManyInputs'));

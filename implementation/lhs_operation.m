@@ -1,4 +1,4 @@
-function hf_out = lhs_operation(hf, samplesf, reg_filter, sample_weights, feature_reg)
+function hf_out = lhs_operation(hf, samplesf, reg_filter, sample_weights, feature_reg, spatial_weights)
 
 % This is the left-hand-side operation in Conjugate Gradient
 
@@ -6,6 +6,10 @@ function hf_out = lhs_operation(hf, samplesf, reg_filter, sample_weights, featur
 num_features = length(hf);
 output_sz = [size(hf{1},1), 2*size(hf{1},2)-1];
 pad_sz = cellfun(@(hf) (output_sz - [size(hf,1), 2*size(hf,2)-1]) / 2, hf, 'uniformoutput',false);
+
+if nargin < 6 % add spatial weights to do weighted ridge regression
+	spatial_weights = {ones(output_sz)};
+end
 
 % Compute the operation corresponding to the data term in the optimization
 % (blockwise matrix multiplications)
@@ -23,7 +27,24 @@ end
 
 % weight all the samples
 sh = bsxfun(@times,sample_weights,sh);
+% sh_old = sh;
 
+if true
+sh = permute(sh, [3,4,1,2]);
+sh = cat(2, sh, conj(rot90(sh(:,1:end-1,:),2))); % full F coeff
+sh = cifft2(sh); % to time domain
+sh = sh.*spatial_weights{1}; % multi spatial weights
+sh = cfft2(sh); % to freq domain
+sh = sh(:,1:(size(sh,2)+1)/2,:,:); % compact F coeff
+sh = permute(sh, [3,4,1,2]);
+% sh = reshape(sh, size(sh,1), 1, size(sh,2), size(sh,3));
+end
+
+% if ~all(sh(:)==sh_old(:))
+% % 	fprintf('ERROR');
+% end
+
+% sh = sh_old;
 % multiply with the transpose
 hf_out = cellfun(@(samplesf,pad_sz) permute(conj(mtimesx(sh(:,1,1+pad_sz(1):end-pad_sz(1), 1+pad_sz(2):end), 'C', samplesf, 'speed')), [3 4 2 1]), ...
     samplesf, pad_sz, 'uniformoutput', false);
